@@ -3,44 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PokeStat Multiplayer 1v1</title>
+    <title>PokeStat Duel 1v1 - Simultané</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { background: radial-gradient(circle, #1a202c 0%, #0a0a0a 100%); color: white; min-height: 100vh; font-family: sans-serif; }
+        body { background: radial-gradient(circle, #1a202c 0%, #0a0a0a 100%); color: white; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .stat-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .active-player { border-color: #4ade80; box-shadow: 0 0 15px rgba(74, 222, 128, 0.4); }
+        .waiting-anim { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
     <div id="app" class="container mx-auto px-4 py-6">
-        <h1 class="text-3xl font-black text-center mb-6 text-yellow-500 italic tracking-tighter uppercase">Duel de Base Stat !</h1>
+        <h1 class="text-3xl font-black text-center mb-6 text-yellow-500 italic uppercase tracking-tighter">Duel de Base Stat !</h1>
 
         <div v-if="!gameActive" class="max-w-md mx-auto bg-gray-800 p-8 rounded-2xl border border-gray-700 shadow-2xl">
             <div class="mb-6">
-                <label class="block text-sm font-bold mb-2">Ton Pseudonyme :</label>
-                <input v-model="myUsername" type="text" placeholder="Ex: Sacha" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-lg focus:outline-none focus:border-yellow-500 text-white">
+                <label class="block text-sm font-bold mb-2 text-gray-300">Ton Pseudonyme :</label>
+                <input v-model="myUsername" type="text" placeholder="Sacha" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-lg focus:outline-none focus:border-yellow-500 text-white">
             </div>
 
             <div class="space-y-4">
-                <div class="p-4 bg-gray-700 rounded-xl border border-gray-600">
-                    <h3 class="font-bold mb-2 text-green-400">Option 1 : Créer</h3>
-                    <button @click="initHost" :disabled="!myUsername" class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 p-3 rounded-lg font-bold transition text-white">
-                        Générer Code Salle
-                    </button>
-                    
+                <div class="p-4 bg-gray-700/50 rounded-xl border border-gray-600">
+                    <button @click="initHost" :disabled="!myUsername" class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 p-3 rounded-lg font-bold transition text-white uppercase">Créer une salle</button>
                     <div v-if="roomCode" class="mt-3 p-2 bg-black text-center rounded font-mono text-xl text-yellow-400 select-all border border-dashed border-yellow-500">
                         {{ roomCode }}
                     </div>
                 </div>
 
-                <div class="p-4 bg-gray-700 rounded-xl border border-gray-600">
-                    <h3 class="font-bold mb-2 text-blue-400">Option 2 : Rejoindre</h3>
-                    <input v-model="joinId" type="text" placeholder="Coller le code ici..." class="w-full bg-gray-900 border border-gray-600 p-2 rounded mb-2 text-center font-mono text-white">
-                    <button @click="initJoin" :disabled="!myUsername || !joinId" class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 p-3 rounded-lg font-bold transition text-white">
-                        Rejoindre le Duel
-                    </button>
+                <div class="p-4 bg-gray-700/50 rounded-xl border border-gray-600">
+                    <input v-model="joinId" type="text" placeholder="Code de la salle..." class="w-full bg-gray-900 border border-gray-600 p-2 rounded mb-2 text-center font-mono text-white">
+                    <button @click="initJoin" :disabled="!myUsername || !joinId" class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 p-3 rounded-lg font-bold transition text-white uppercase text-sm">Rejoindre</button>
                 </div>
             </div>
             <p class="text-xs text-gray-500 mt-4 text-center">Statut : {{ status }}</p>
@@ -48,7 +42,7 @@
 
         <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <div class="bg-gray-800 p-5 rounded-xl border-2 transition-all" :class="myTurn && !gameOver ? 'border-green-500 shadow-lg' : 'border-gray-700 opacity-80'">
+            <div class="bg-gray-800 p-5 rounded-xl border-2 transition-all border-gray-700">
                 <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-2">
                     <span class="font-bold text-xl">{{ myUsername }}</span>
                     <span class="bg-yellow-600 px-3 py-1 rounded text-sm font-black">{{ myScore }} PTS</span>
@@ -62,35 +56,35 @@
             </div>
 
             <div class="text-center order-first lg:order-none">
-                <div v-if="loading" class="p-10 animate-pulse text-yellow-500 font-bold">RECHERCHE D'UN POKÉMON...</div>
+                <div v-if="loading" class="p-10 animate-pulse text-yellow-500 font-bold">CHARGEMENT...</div>
                 <div v-else-if="currentPokemon" class="bg-gray-800/50 p-6 rounded-3xl border border-white/10 backdrop-blur-md">
-                    <p class="text-yellow-500 font-bold mb-1">TOUR {{ turnCount }} / 6</p>
-                    <img :src="currentPokemon.sprite" class="w-40 h-40 mx-auto drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                    <p class="text-yellow-500 font-bold mb-1 uppercase text-sm">Pokémon {{ turnCount }} / 6</p>
+                    <img :src="currentPokemon.sprite" class="w-40 h-40 mx-auto drop-shadow-2xl">
                     <h2 class="text-2xl font-black capitalize text-white">{{ currentPokemon.name }}</h2>
 
                     <div v-if="!gameOver" class="grid grid-cols-2 gap-2 mt-6">
                         <button v-for="(label, key) in statLabels" :key="key" 
                             @click="pickStat(key)" 
-                            :disabled="!myTurn || myStatsChosen[key] !== null"
-                            class="stat-btn bg-gray-700 hover:bg-yellow-600 p-2 rounded text-xs font-black uppercase transition-colors text-white"
+                            :disabled="hasPickedThisTurn || myStatsChosen[key] !== null"
+                            class="stat-btn bg-gray-700 hover:bg-yellow-600 p-3 rounded text-xs font-black uppercase transition-all text-white border-b-4 border-gray-900 active:border-0"
                         >
                             {{ label }}
                         </button>
                     </div>
                     
-                    <div v-if="!myTurn && !gameOver" class="mt-4 p-2 bg-blue-900/30 text-blue-300 rounded animate-pulse text-sm">
-                        En attente de {{ opponentUsername }}...
+                    <div v-if="hasPickedThisTurn && !roundResolved" class="mt-4 p-2 bg-green-900/30 text-green-300 rounded waiting-anim text-sm font-bold">
+                        Choix validé ! Attente de l'adversaire...
                     </div>
                 </div>
 
-                <div v-if="gameOver" class="mt-6 p-6 bg-yellow-500 text-black rounded-2xl shadow-2xl">
-                    <h2 class="text-3xl font-black">FIN DU DUEL !</h2>
-                    <p class="text-xl font-bold mt-2">{{ gameResult }}</p>
-                    <button onclick="location.reload()" class="mt-4 bg-black text-white px-6 py-2 rounded-lg font-bold hover:scale-105 transition">REJOUER</button>
+                <div v-if="gameOver" class="mt-6 p-6 bg-yellow-500 text-black rounded-2xl shadow-2xl scale-110 transition-transform">
+                    <h2 class="text-3xl font-black italic">FIN DU DUEL !</h2>
+                    <p class="text-xl font-bold mt-2 uppercase">{{ gameResult }}</p>
+                    <button onclick="location.reload()" class="mt-4 bg-black text-white px-6 py-2 rounded-lg font-bold hover:bg-gray-800 transition">REJOUER</button>
                 </div>
             </div>
 
-            <div class="bg-gray-800 p-5 rounded-xl border-2 transition-all" :class="!myTurn && !gameOver ? 'border-red-500 shadow-lg' : 'border-gray-700 opacity-80'">
+            <div class="bg-gray-800 p-5 rounded-xl border-2 transition-all border-gray-700">
                 <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-2">
                     <span class="font-bold text-xl">{{ opponentUsername || 'Adversaire' }}</span>
                     <span class="bg-yellow-600 px-3 py-1 rounded text-sm font-black">{{ opponentScore }} PTS</span>
@@ -98,7 +92,9 @@
                 <div class="space-y-2">
                     <div v-for="(label, key) in statLabels" :key="key" class="flex justify-between bg-gray-900 p-2 rounded border border-gray-700">
                         <span class="text-xs text-gray-400 uppercase font-bold">{{ label }}</span>
-                        <span class="font-bold text-red-400">{{ opponentStatsChosen[key] || '--' }}</span>
+                        <span class="font-bold text-red-400">
+                            {{ roundResolved ? (opponentStatsChosen[key] || '--') : (opponentStatsChosen[key] ? '???' : '--') }}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -108,146 +104,119 @@
     <script>
         const { createApp, ref, computed } = Vue;
 
-createApp({
-    setup() {
-        const myUsername = ref("");
-        const opponentUsername = ref("");
-        const roomCode = ref("");
-        const joinId = ref("");
-        const gameActive = ref(false);
-        const status = ref("Prêt");
-        const loading = ref(false);
-        const peer = ref(null);
-        const conn = ref(null);
-        
-        const currentPokemon = ref(null);
-        const turnCount = ref(1);
-        const myTurn = ref(false); // Qui doit cliquer ?
-        const gameOver = ref(false);
-
-        const statLabels = { hp:'PV', attack:'ATK', defense:'DEF', 'special-attack':'ATK SP', 'special-defense':'DEF SP', speed:'VIT' };
-        const myStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
-        const opponentStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
-        
-        const myScore = ref(0);
-        const opponentScore = ref(0);
-
-        const initHost = () => {
-            peer.value = new Peer();
-            peer.value.on('open', (id) => { roomCode.value = id; status.value = "Salle ouverte !"; });
-            peer.value.on('connection', (c) => {
-                conn.value = c;
-                setupChat();
-            });
-        };
-
-        const initJoin = () => {
-            peer.value = new Peer();
-            peer.value.on('open', () => {
-                conn.value = peer.value.connect(joinId.value);
-                setupChat();
-            });
-        };
-
-        const setupChat = () => {
-            conn.value.on('open', () => {
-                conn.value.send({ type: 'HANDSHAKE', user: myUsername.value });
-            });
-
-            conn.value.on('data', (data) => {
-                console.log("Reçu:", data.type);
+        createApp({
+            setup() {
+                const myUsername = ref("");
+                const opponentUsername = ref("");
+                const roomCode = ref("");
+                const joinId = ref("");
+                const gameActive = ref(false);
+                const status = ref("Prêt");
+                const loading = ref(false);
+                const peer = ref(null);
+                const conn = ref(null);
                 
-                if(data.type === 'HANDSHAKE') {
-                    opponentUsername.value = data.user;
-                    gameActive.value = true;
-                    if(roomCode.value) { // Je suis l'hôte, je commence
-                        myTurn.value = true;
-                        nextRound();
-                    }
-                }
+                const currentPokemon = ref(null);
+                const turnCount = ref(1);
+                const gameOver = ref(false);
+                const hasPickedThisTurn = ref(false);
+                const roundResolved = ref(true); // Est-on entre deux pokémons ?
+
+                const statLabels = { hp:'PV', attack:'ATK', defense:'DEF', 'special-attack':'ATK SP', 'special-defense':'DEF SP', speed:'VIT' };
+                const myStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
+                const opponentStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
                 
-                if(data.type === 'NEW_POKEMON') {
-                    currentPokemon.value = data.pokemon;
+                const myScore = ref(0);
+                const opponentScore = ref(0);
+
+                const initHost = () => {
+                    peer.value = new Peer();
+                    peer.value.on('open', (id) => { roomCode.value = id; status.value = "En attente..."; });
+                    peer.value.on('connection', (c) => { conn.value = c; setupChat(); });
+                };
+
+                const initJoin = () => {
+                    peer.value = new Peer();
+                    peer.value.on('open', () => { conn.value = peer.value.connect(joinId.value); setupChat(); });
+                };
+
+                const setupChat = () => {
+                    conn.value.on('open', () => {
+                        conn.value.send({ type: 'HANDSHAKE', user: myUsername.value });
+                    });
+
+                    conn.value.on('data', (data) => {
+                        if(data.type === 'HANDSHAKE') {
+                            opponentUsername.value = data.user;
+                            gameActive.value = true;
+                            if(roomCode.value) nextRound(); // L'hôte lance le premier poké
+                        }
+                        if(data.type === 'NEW_POKEMON') {
+                            currentPokemon.value = data.pokemon;
+                            hasPickedThisTurn.value = false;
+                            roundResolved.value = false;
+                            loading.value = false;
+                        }
+                        if(data.type === 'PICK') {
+                            opponentStatsChosen.value[data.stat] = data.val;
+                            checkRoundWinner(data.stat);
+                        }
+                    });
+                };
+
+                const nextRound = async () => {
+                    loading.value = true;
+                    const randomId = Math.floor(Math.random() * 800) + 1;
+                    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
+                    const d = await res.json();
+                    const poke = {
+                        name: d.name,
+                        sprite: d.sprites.other['official-artwork'].front_default || d.sprites.front_default,
+                        stats: { hp:d.stats[0].base_stat, attack:d.stats[1].base_stat, defense:d.stats[2].base_stat, 'special-attack':d.stats[3].base_stat, 'special-defense':d.stats[4].base_stat, speed:d.stats[5].base_stat }
+                    };
+                    currentPokemon.value = poke;
+                    conn.value.send({ type: 'NEW_POKEMON', pokemon: poke });
                     loading.value = false;
-                    // Si je suis le client (pas d'ID de room), c'est mon tour après l'hôte
-                    if (!roomCode.value) {
-                        myTurn.value = false; // J'attends que l'hôte joue d'abord
-                    }
-                }
+                    roundResolved.value = false;
+                    hasPickedThisTurn.value = false;
+                };
 
-                if(data.type === 'YOUR_TURN') {
-                    myTurn.value = true;
-                    status.value = "C'est ton tour !";
-                }
+                const pickStat = (key) => {
+                    const val = currentPokemon.value.stats[key];
+                    myStatsChosen.value[key] = val;
+                    hasPickedThisTurn.value = true;
+                    conn.value.send({ type: 'PICK', stat: key, val: val });
+                    checkRoundWinner(key);
+                };
 
-                if(data.type === 'PICK') {
-                    opponentStatsChosen.value[data.stat] = data.val;
-                    status.value = opponentUsername.value + " a choisi une stat.";
-                    checkRoundWinner(data.stat);
-                }
-            });
-        };
-
-        const nextRound = async () => {
-            loading.value = true;
-            const randomId = Math.floor(Math.random() * 800) + 1;
-            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
-            const d = await res.json();
-            const poke = {
-                name: d.name,
-                sprite: d.sprites.other['official-artwork'].front_default,
-                stats: { hp:d.stats[0].base_stat, attack:d.stats[1].base_stat, defense:d.stats[2].base_stat, 'special-attack':d.stats[3].base_stat, 'special-defense':d.stats[4].base_stat, speed:d.stats[5].base_stat }
-            };
-            currentPokemon.value = poke;
-            conn.value.send({ type: 'NEW_POKEMON', pokemon: poke });
-            loading.value = false;
-        };
-
-        const pickStat = (key) => {
-            if (!myTurn.value) return;
-
-            const val = currentPokemon.value.stats[key];
-            myStatsChosen.value[key] = val;
-            
-            // Envoyer mon choix à l'autre
-            conn.value.send({ type: 'PICK', stat: key, val: val });
-            
-            // Passer le tour à l'autre
-            myTurn.value = false;
-            conn.value.send({ type: 'YOUR_TURN' });
-            
-            checkRoundWinner(key);
-        };
-
-        const checkRoundWinner = (statKey) => {
-            // Si les deux ont choisi la stat pour ce Pokémon
-            if(myStatsChosen.value[statKey] !== null && opponentStatsChosen.value[statKey] !== null) {
-                if(myStatsChosen.value[statKey] > opponentStatsChosen.value[statKey]) myScore.value++;
-                else if(myStatsChosen.value[statKey] < opponentStatsChosen.value[statKey]) opponentScore.value++;
-                
-                if(turnCount.value < 6) {
-                    turnCount.value++;
-                    if(roomCode.value) { // L'hôte gère le Pokémon suivant
+                const checkRoundWinner = (statKey) => {
+                    // Si les deux ont fait un choix pour ce tour précis
+                    if(myStatsChosen.value[statKey] !== null && opponentStatsChosen.value[statKey] !== null) {
+                        roundResolved.value = true; // On révèle les stats
+                        
+                        if(myStatsChosen.value[statKey] > opponentStatsChosen.value[statKey]) myScore.value++;
+                        else if(myStatsChosen.value[statKey] < opponentStatsChosen.value[statKey]) opponentScore.value++;
+                        
                         setTimeout(() => {
-                            myTurn.value = true; // L'hôte rejoue en premier au tour suivant
-                            nextRound();
-                        }, 1000);
+                            if(turnCount.value < 6) {
+                                turnCount.value++;
+                                if(roomCode.value) nextRound(); 
+                            } else {
+                                gameOver.value = true;
+                            }
+                        }, 2000); // 2 secondes pour voir qui a gagné le tour
                     }
-                } else {
-                    gameOver.value = true;
-                }
+                };
+
+                const gameResult = computed(() => {
+                    if(myScore.value > opponentScore.value) return "Victoire Royale !";
+                    if(myScore.value < opponentScore.value) return "Défaite cuisante...";
+                    return "Égalité parfaite !";
+                });
+
+                return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myScore, opponentScore, turnCount, gameOver, hasPickedThisTurn, roundResolved, gameResult, initHost, initJoin, pickStat };
             }
-        };
-
-        const gameResult = computed(() => {
-            if(myScore.value > opponentScore.value) return "VICTOIRE !";
-            if(myScore.value < opponentScore.value) return "DÉFAITE...";
-            return "ÉGALITÉ !";
-        });
-
-        return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myTurn, myScore, opponentScore, turnCount, gameOver, gameResult, initHost, initJoin, pickStat };
-    }
-}).mount('#app');
+        }).mount('#app');
     </script>
 </body>
 </html>
