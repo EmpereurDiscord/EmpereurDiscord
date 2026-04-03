@@ -168,7 +168,9 @@ createApp({
                     resetTurnState();
                 }
                 if(data.type === 'PICK') {
-                    oppCurrentChoice.value = data;
+                    oppCurrentChoice.value = { stat: data.stat, val: data.val };
+                    // On enregistre immédiatement la stat reçue dans le tableau de l'adversaire
+                    opponentStatsChosen.value[data.stat] = data.val;
                     checkTurnEnd();
                 }
                 if(data.type === 'RESTART') {
@@ -201,20 +203,20 @@ createApp({
         };
 
         const pickStat = (key) => {
+            if (hasPickedThisTurn.value) return;
             const val = currentPokemon.value.stats[key];
             myCurrentChoice.value = { stat: key, val: val };
+            myStatsChosen.value[key] = val; // On l'affiche direct chez nous
             hasPickedThisTurn.value = true;
             conn.value.send({ type: 'PICK', stat: key, val: val });
             checkTurnEnd();
         };
 
         const checkTurnEnd = () => {
+            // Important : on vérifie si les deux ont fait un choix
             if(myCurrentChoice.value && oppCurrentChoice.value) {
+                // On force la résolution visuelle pour les deux
                 roundResolved.value = true;
-                
-                // On enregistre les valeurs
-                myStatsChosen.value[myCurrentChoice.value.stat] = myCurrentChoice.value.val;
-                opponentStatsChosen.value[oppCurrentChoice.value.stat] = oppCurrentChoice.value.val;
 
                 setTimeout(() => {
                     if(turnCount.value < 6) {
@@ -228,13 +230,12 @@ createApp({
         };
 
         const isStatVisible = (key) => {
-            // Si l'adversaire a choisi cette stat
+            // Une stat est visible si elle appartient à un tour déjà passé
+            // OU si c'est la stat du tour actuel et que le round est résolu
             if (opponentStatsChosen.value[key] !== null) {
-                // Si c'est le choix du tour en cours, on attend la résolution
                 if (oppCurrentChoice.value && oppCurrentChoice.value.stat === key) {
                     return roundResolved.value;
                 }
-                // Si c'est un tour déjà passé, c'est visible
                 return true;
             }
             return false;
