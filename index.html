@@ -162,7 +162,20 @@
                 };
 
                 const setupChat = () => {
-                    conn.value.on('open', () => conn.value.send({ type: 'HANDSHAKE', user: myUsername.value }));
+                    conn.value.on('open', () => {
+                        conn.value.send({ type: 'HANDSHAKE', user: myUsername.value });
+                    });
+        
+                    // Détection de la déconnexion
+                    conn.value.on('close', () => {
+                        if (!gameOver.value && gameActive.value) {
+                            status.value = "L'adversaire a quitté la partie.";
+                            // On force la victoire par abandon
+                            myConfirmedStats.value.hp = 9999; 
+                            gameOver.value = true;
+                        }
+                    });
+        
                     conn.value.on('data', (data) => {
                         if(data.type === 'HANDSHAKE') {
                             opponentUsername.value = data.user;
