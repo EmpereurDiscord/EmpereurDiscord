@@ -107,171 +107,164 @@
     <script>
         const { createApp, ref, computed } = Vue;
 
-        createApp({
-            setup() {
-                const myUsername = ref("");
-                const opponentUsername = ref("");
-                const roomCode = ref("");
-                const joinId = ref("");
-                const gameActive = ref(false);
-                const status = ref("Prêt");
-                const loading = ref(false);
-                const peer = ref(null);
-                const conn = ref(null);
-                
-                const currentPokemon = ref(null);
-                const turnCount = ref(1);
-                const gameOver = ref(false);
-                const hasPickedThisTurn = ref(false);
-                const roundResolved = ref(false);
+createApp({
+    setup() {
+        const myUsername = ref("");
+        const opponentUsername = ref("");
+        const roomCode = ref("");
+        const joinId = ref("");
+        const gameActive = ref(false);
+        const status = ref("Prêt");
+        const loading = ref(false);
+        const peer = ref(null);
+        const conn = ref(null);
+        
+        const currentPokemon = ref(null);
+        const turnCount = ref(1);
+        const gameOver = ref(false);
+        const hasPickedThisTurn = ref(false);
+        const roundResolved = ref(false);
 
-                const myCurrentChoice = ref(null);
-                const oppCurrentChoice = ref(null);
+        const myCurrentChoice = ref(null);
+        const oppCurrentChoice = ref(null);
 
-                const statLabels = { hp:'PV', attack:'ATK', defense:'DEF', 'special-attack':'ATK SP', 'special-defense':'DEF SP', speed:'VIT' };
-                const myStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
-                const opponentStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
+        const statLabels = { hp:'PV', attack:'ATK', defense:'DEF', 'special-attack':'ATK SP', 'special-defense':'DEF SP', speed:'VIT' };
+        const myStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
+        const opponentStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
 
-                // Pour cacher la stat de l'adversaire seulement pendant les 3 secondes de résolution
-                const hiddenOpponentStatKey = ref(null);
+        const generateShortId = () => {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let result = '';
+            for (let i = 0; i < 5; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+            return result;
+        };
 
-                const generateShortId = () => {
-                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                    let result = '';
-                    for (let i = 0; i < 5; i++) {
-                        result += chars.charAt(Math.floor(Math.random() * chars.length));
-                    }
-                    return result;
-                };
+        const initHost = () => {
+            const shortId = generateShortId();
+            peer.value = new Peer(shortId);
+            peer.value.on('open', (id) => { roomCode.value = id; status.value = "Salle ouverte"; });
+            peer.value.on('connection', (c) => { conn.value = c; setupChat(); });
+            peer.value.on('error', (err) => { if(err.type === 'unavailable-id') initHost(); });
+        };
 
-                const initHost = () => {
-                    const shortId = generateShortId();
-                    peer.value = new Peer(shortId);
-                    peer.value.on('open', (id) => { roomCode.value = id; status.value = "Salle ouverte"; });
-                    peer.value.on('connection', (c) => { conn.value = c; setupChat(); });
-                    peer.value.on('error', (err) => { 
-                        if(err.type === 'unavailable-id') initHost(); // Recréer si ID pris
-                    });
-                };
+        const initJoin = () => {
+            peer.value = new Peer();
+            peer.value.on('open', () => { 
+                conn.value = peer.value.connect(joinId.value.toUpperCase()); 
+                setupChat(); 
+            });
+        };
 
-                const initJoin = () => {
-                    peer.value = new Peer();
-                    peer.value.on('open', () => { 
-                        conn.value = peer.value.connect(joinId.value.toUpperCase()); 
-                        setupChat(); 
-                    });
-                };
-
-                const setupChat = () => {
-                    conn.value.on('open', () => conn.value.send({ type: 'HANDSHAKE', user: myUsername.value }));
-                    conn.value.on('data', (data) => {
-                        if(data.type === 'HANDSHAKE') {
-                            opponentUsername.value = data.user;
-                            gameActive.value = true;
-                            if(roomCode.value) nextRound();
-                        }
-                        if(data.type === 'NEW_POKEMON') {
-                            currentPokemon.value = data.pokemon;
-                            resetTurnState();
-                        }
-                        if(data.type === 'PICK') {
-                            oppCurrentChoice.value = data;
-                            checkTurnEnd();
-                        }
-                        if(data.type === 'RESTART') {
-                            resetStateForNewGame();
-                        }
-                    });
-                };
-
-                const resetTurnState = () => {
-                    hasPickedThisTurn.value = false;
-                    roundResolved.value = false;
-                    loading.value = false;
-                    myCurrentChoice.value = null;
-                    oppCurrentChoice.value = null;
-                    hiddenOpponentStatKey.value = null;
-                };
-
-                const nextRound = async () => {
-                    loading.value = true;
-                    const randomId = Math.floor(Math.random() * 800) + 1;
-                    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
-                    const d = await res.json();
-                    const poke = {
-                        name: d.name,
-                        sprite: d.sprites.other['official-artwork'].front_default || d.sprites.front_default,
-                        stats: { hp:d.stats[0].base_stat, attack:d.stats[1].base_stat, defense:d.stats[2].base_stat, 'special-attack':d.stats[3].base_stat, 'special-defense':d.stats[4].base_stat, speed:d.stats[5].base_stat }
-                    };
-                    currentPokemon.value = poke;
-                    conn.value.send({ type: 'NEW_POKEMON', pokemon: poke });
-                    resetTurnState();
-                };
-
-                const pickStat = (key) => {
-                    const val = currentPokemon.value.stats[key];
-                    myCurrentChoice.value = { stat: key, val: val };
-                    hasPickedThisTurn.value = true;
-                    conn.value.send({ type: 'PICK', stat: key, val: val });
-                    checkTurnEnd();
-                };
-
-                const checkTurnEnd = () => {
-                    if(myCurrentChoice.value && oppCurrentChoice.value) {
-                        roundResolved.value = true;
-                        hiddenOpponentStatKey.value = oppCurrentChoice.value.stat;
-                        
-                        myStatsChosen.value[myCurrentChoice.value.stat] = myCurrentChoice.value.val;
-                        opponentStatsChosen.value[oppCurrentChoice.value.stat] = oppCurrentChoice.value.val;
-
-                        setTimeout(() => {
-                            // On "cache" la stat du tour mais elle reste dans l'historique opponentStatsChosen
-                            // Le point suivant est que le tour passe :
-                            if(turnCount.value < 6) {
-                                turnCount.value++;
-                                if(roomCode.value) nextRound();
-                            } else {
-                                gameOver.value = true;
-                            }
-                        }, 3000);
-                    }
-                };
-
-                const isStatVisible = (key) => {
-                    // Si le round n'est pas fini, on ne voit rien
-                    if(!roundResolved.value) return false;
-                    // Si c'est une stat d'un tour précédent, elle est visible
-                    if(opponentStatsChosen.value[key] !== null && key !== hiddenOpponentStatKey.value) return true;
-                    // Si c'est la stat du tour en cours et que le round est résolu, elle est visible
-                    if(key === hiddenOpponentStatKey.value && roundResolved.value) return true;
-                    return false;
-                };
-
-                const resetStateForNewGame = () => {
-                    turnCount.value = 1;
-                    gameOver.value = false;
-                    myStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
-                    opponentStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
+        const setupChat = () => {
+            conn.value.on('open', () => conn.value.send({ type: 'HANDSHAKE', user: myUsername.value }));
+            conn.value.on('data', (data) => {
+                if(data.type === 'HANDSHAKE') {
+                    opponentUsername.value = data.user;
+                    gameActive.value = true;
                     if(roomCode.value) nextRound();
-                };
-
-                const resetForNewGame = () => {
-                    conn.value.send({ type: 'RESTART' });
+                }
+                if(data.type === 'NEW_POKEMON') {
+                    currentPokemon.value = data.pokemon;
+                    resetTurnState();
+                }
+                if(data.type === 'PICK') {
+                    oppCurrentChoice.value = data;
+                    checkTurnEnd();
+                }
+                if(data.type === 'RESTART') {
                     resetStateForNewGame();
-                };
+                }
+            });
+        };
 
-                const myTotalStats = computed(() => Object.values(myStatsChosen.value).reduce((a, b) => a + (b || 0), 0));
-                const opponentTotalStats = computed(() => Object.values(opponentStatsChosen.value).reduce((a, b) => a + (b || 0), 0));
+        const resetTurnState = () => {
+            hasPickedThisTurn.value = false;
+            roundResolved.value = false;
+            loading.value = false;
+            myCurrentChoice.value = null;
+            oppCurrentChoice.value = null;
+        };
 
-                const gameResult = computed(() => {
-                    if(myTotalStats.value > opponentTotalStats.value) return "Victoire !";
-                    if(myTotalStats.value < opponentTotalStats.value) return "Défaite...";
-                    return "Égalité !";
-                });
+        const nextRound = async () => {
+            loading.value = true;
+            const randomId = Math.floor(Math.random() * 800) + 1;
+            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
+            const d = await res.json();
+            const poke = {
+                name: d.name,
+                sprite: d.sprites.other['official-artwork'].front_default || d.sprites.front_default,
+                stats: { hp:d.stats[0].base_stat, attack:d.stats[1].base_stat, defense:d.stats[2].base_stat, 'special-attack':d.stats[3].base_stat, 'special-defense':d.stats[4].base_stat, speed:d.stats[5].base_stat }
+            };
+            currentPokemon.value = poke;
+            conn.value.send({ type: 'NEW_POKEMON', pokemon: poke });
+            resetTurnState();
+        };
 
-                return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myTotalStats, opponentTotalStats, turnCount, gameOver, hasPickedThisTurn, roundResolved, gameResult, initHost, initJoin, pickStat, isStatVisible, resetForNewGame };
+        const pickStat = (key) => {
+            const val = currentPokemon.value.stats[key];
+            myCurrentChoice.value = { stat: key, val: val };
+            hasPickedThisTurn.value = true;
+            conn.value.send({ type: 'PICK', stat: key, val: val });
+            checkTurnEnd();
+        };
+
+        const checkTurnEnd = () => {
+            if(myCurrentChoice.value && oppCurrentChoice.value) {
+                roundResolved.value = true;
+                
+                // On enregistre les valeurs
+                myStatsChosen.value[myCurrentChoice.value.stat] = myCurrentChoice.value.val;
+                opponentStatsChosen.value[oppCurrentChoice.value.stat] = oppCurrentChoice.value.val;
+
+                setTimeout(() => {
+                    if(turnCount.value < 6) {
+                        turnCount.value++;
+                        if(roomCode.value) nextRound();
+                    } else {
+                        gameOver.value = true;
+                    }
+                }, 3000);
             }
-        }).mount('#app');
+        };
+
+        const isStatVisible = (key) => {
+            // Si l'adversaire a choisi cette stat
+            if (opponentStatsChosen.value[key] !== null) {
+                // Si c'est le choix du tour en cours, on attend la résolution
+                if (oppCurrentChoice.value && oppCurrentChoice.value.stat === key) {
+                    return roundResolved.value;
+                }
+                // Si c'est un tour déjà passé, c'est visible
+                return true;
+            }
+            return false;
+        };
+
+        const resetStateForNewGame = () => {
+            turnCount.value = 1;
+            gameOver.value = false;
+            myStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
+            opponentStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
+            if(roomCode.value) nextRound();
+        };
+
+        const resetForNewGame = () => {
+            conn.value.send({ type: 'RESTART' });
+            resetStateForNewGame();
+        };
+
+        const myTotalStats = computed(() => Object.values(myStatsChosen.value).reduce((a, b) => a + (b || 0), 0));
+        const opponentTotalStats = computed(() => Object.values(opponentStatsChosen.value).reduce((a, b) => a + (b || 0), 0));
+
+        const gameResult = computed(() => {
+            if(myTotalStats.value > opponentTotalStats.value) return "Victoire !";
+            if(myTotalStats.value < opponentTotalStats.value) return "Défaite...";
+            return "Égalité !";
+        });
+
+        return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myTotalStats, opponentTotalStats, turnCount, gameOver, hasPickedThisTurn, roundResolved, gameResult, initHost, initJoin, pickStat, isStatVisible, resetForNewGame };
+    }
+}).mount('#app');
     </script>
 </body>
 </html>
