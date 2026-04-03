@@ -129,6 +129,12 @@ createApp({
         const oppCurrentChoice = ref(null);
 
         const statLabels = { hp:'PV', attack:'ATK', defense:'DEF', 'special-attack':'ATK SP', 'special-defense':'DEF SP', speed:'VIT' };
+        
+        // Stockage des stats confirmées (historique des tours passés)
+        const myConfirmedStats = ref({ hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 });
+        const oppConfirmedStats = ref({ hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 });
+
+        // Affichage en temps réel dans les colonnes latérales
         const myStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
         const opponentStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
 
@@ -169,7 +175,6 @@ createApp({
                 }
                 if(data.type === 'PICK') {
                     oppCurrentChoice.value = { stat: data.stat, val: data.val };
-                    // On enregistre immédiatement la stat reçue dans le tableau de l'adversaire
                     opponentStatsChosen.value[data.stat] = data.val;
                     checkTurnEnd();
                 }
@@ -206,17 +211,19 @@ createApp({
             if (hasPickedThisTurn.value) return;
             const val = currentPokemon.value.stats[key];
             myCurrentChoice.value = { stat: key, val: val };
-            myStatsChosen.value[key] = val; // On l'affiche direct chez nous
+            myStatsChosen.value[key] = val;
             hasPickedThisTurn.value = true;
             conn.value.send({ type: 'PICK', stat: key, val: val });
             checkTurnEnd();
         };
 
         const checkTurnEnd = () => {
-            // Important : on vérifie si les deux ont fait un choix
             if(myCurrentChoice.value && oppCurrentChoice.value) {
-                // On force la résolution visuelle pour les deux
                 roundResolved.value = true;
+                
+                // On n'ajoute aux stats "confirmées" qu'au moment de la résolution
+                myConfirmedStats.value[myCurrentChoice.value.stat] = myCurrentChoice.value.val;
+                oppConfirmedStats.value[oppCurrentChoice.value.stat] = oppCurrentChoice.value.val;
 
                 setTimeout(() => {
                     if(turnCount.value < 6) {
@@ -230,8 +237,6 @@ createApp({
         };
 
         const isStatVisible = (key) => {
-            // Une stat est visible si elle appartient à un tour déjà passé
-            // OU si c'est la stat du tour actuel et que le round est résolu
             if (opponentStatsChosen.value[key] !== null) {
                 if (oppCurrentChoice.value && oppCurrentChoice.value.stat === key) {
                     return roundResolved.value;
@@ -244,6 +249,8 @@ createApp({
         const resetStateForNewGame = () => {
             turnCount.value = 1;
             gameOver.value = false;
+            myConfirmedStats.value = { hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 };
+            oppConfirmedStats.value = { hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 };
             myStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
             opponentStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
             if(roomCode.value) nextRound();
@@ -254,8 +261,9 @@ createApp({
             resetStateForNewGame();
         };
 
-        const myTotalStats = computed(() => Object.values(myStatsChosen.value).reduce((a, b) => a + (b || 0), 0));
-        const opponentTotalStats = computed(() => Object.values(opponentStatsChosen.value).reduce((a, b) => a + (b || 0), 0));
+        // Calcul du total basé uniquement sur les rounds terminés/confirmés
+        const myTotalStats = computed(() => Object.values(myConfirmedStats.value).reduce((a, b) => a + b, 0));
+        const opponentTotalStats = computed(() => Object.values(oppConfirmedStats.value).reduce((a, b) => a + b, 0));
 
         const gameResult = computed(() => {
             if(myTotalStats.value > opponentTotalStats.value) return "Victoire !";
