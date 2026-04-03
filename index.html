@@ -15,27 +15,27 @@
 </head>
 <body>
     <div id="app" class="container mx-auto px-4 py-6">
-        <h1 class="text-3xl font-black text-center mb-6 text-yellow-500 italic tracking-tighter">POKÉ-STAT DUEL MULTI</h1>
+        <h1 class="text-3xl font-black text-center mb-6 text-yellow-500 italic tracking-tighter uppercase">Duel de Base Stat !</h1>
 
         <div v-if="!gameActive" class="max-w-md mx-auto bg-gray-800 p-8 rounded-2xl border border-gray-700 shadow-2xl">
             <div class="mb-6">
                 <label class="block text-sm font-bold mb-2">Ton Pseudonyme :</label>
-                <input v-model="myUsername" type="text" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-lg focus:outline-none focus:border-yellow-500">
+                <input v-model="myUsername" type="text" placeholder="Ex: Sacha" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-lg focus:outline-none focus:border-yellow-500 text-white">
             </div>
 
             <div class="space-y-4">
-                <div class="p-4 bg-gray-700 rounded-xl">
-                    <h3 class="font-bold mb-2">Créer une salle</h3>
-                    <button @click="initHost" :disabled="!myUsername" class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg font-bold transition">Générer un Code de Salle</button>
+                <div class="p-4 bg-gray-700 rounded-xl border border-gray-600">
+                    <h3 class="font-bold mb-2 text-green-400">Option 1 : Créer</h3>
+                    <button @click="initHost" :disabled="!myUsername || roomCode" class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 p-3 rounded-lg font-bold transition">Générer Code Salle</button>
                     <div v-if="roomCode" class="mt-3 p-2 bg-black text-center rounded font-mono text-xl text-yellow-400 select-all border border-dashed border-yellow-500">
                         {{ roomCode }}
                     </div>
                 </div>
 
-                <div class="p-4 bg-gray-700 rounded-xl">
-                    <h3 class="font-bold mb-2">Rejoindre une salle</h3>
-                    <input v-model="joinId" type="text" placeholder="Coller le code ici..." class="w-full bg-gray-900 border border-gray-600 p-2 rounded mb-2 text-center font-mono">
-                    <button @click="initJoin" :disabled="!myUsername || !joinId" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-lg font-bold transition">Rejoindre le Duel</button>
+                <div class="p-4 bg-gray-700 rounded-xl border border-gray-600">
+                    <h3 class="font-bold mb-2 text-blue-400">Option 2 : Rejoindre</h3>
+                    <input v-model="joinId" type="text" placeholder="Coller le code ici..." class="w-full bg-gray-900 border border-gray-600 p-2 rounded mb-2 text-center font-mono text-white">
+                    <button @click="initJoin" :disabled="!myUsername || !joinId" class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 p-3 rounded-lg font-bold transition text-white">Rejoindre le Duel</button>
                 </div>
             </div>
             <p class="text-xs text-gray-500 mt-4 text-center">Statut : {{ status }}</p>
@@ -43,57 +43,57 @@
 
         <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <div class="bg-gray-800 p-5 rounded-xl border-2 transition-all" :class="{'active-player': myTurn}">
-                <div class="flex items-center justify-between mb-4">
-                    <span class="font-bold text-xl">{{ myUsername }} (Moi)</span>
+            <div class="bg-gray-800 p-5 rounded-xl border-2 transition-all" :class="myTurn && !gameOver ? 'border-green-500 shadow-lg' : 'border-gray-700 opacity-80'">
+                <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-2">
+                    <span class="font-bold text-xl">{{ myUsername }}</span>
                     <span class="bg-yellow-600 px-3 py-1 rounded text-sm font-black">{{ myScore }} PTS</span>
                 </div>
                 <div class="space-y-2">
-                    <div v-for="(val, key) in myStatsChosen" :key="key" class="flex justify-between bg-gray-900 p-2 rounded border border-gray-700">
-                        <span class="text-xs text-gray-400 uppercase">{{ statLabels[key] }}</span>
-                        <span class="font-bold text-blue-400">{{ val || '--' }}</span>
+                    <div v-for="(label, key) in statLabels" :key="key" class="flex justify-between bg-gray-900 p-2 rounded border border-gray-700">
+                        <span class="text-xs text-gray-400 uppercase font-bold">{{ label }}</span>
+                        <span class="font-bold text-blue-400">{{ myStatsChosen[key] || '--' }}</span>
                     </div>
                 </div>
             </div>
 
-            <div class="text-center">
-                <div v-if="loading" class="p-10 animate-bounce">Chargement du Pokémon...</div>
+            <div class="text-center order-first lg:order-none">
+                <div v-if="loading" class="p-10 animate-pulse text-yellow-500 font-bold">RECHERCHE D'UN POKÉMON...</div>
                 <div v-else-if="currentPokemon" class="bg-gray-800/50 p-6 rounded-3xl border border-white/10 backdrop-blur-md">
                     <p class="text-yellow-500 font-bold mb-1">TOUR {{ turnCount }} / 6</p>
                     <img :src="currentPokemon.sprite" class="w-40 h-40 mx-auto drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                    <h2 class="text-2xl font-black capitalize">{{ currentPokemon.name }}</h2>
+                    <h2 class="text-2xl font-black capitalize text-white">{{ currentPokemon.name }}</h2>
 
                     <div v-if="!gameOver" class="grid grid-cols-2 gap-2 mt-6">
                         <button v-for="(label, key) in statLabels" :key="key" 
                             @click="pickStat(key)" 
                             :disabled="!myTurn || myStatsChosen[key] !== null"
-                            class="stat-btn bg-gray-700 hover:bg-yellow-600 p-2 rounded text-xs font-black uppercase transition-colors"
+                            class="stat-btn bg-gray-700 hover:bg-yellow-600 p-2 rounded text-xs font-black uppercase transition-colors text-white"
                         >
                             {{ label }}
                         </button>
                     </div>
                     
-                    <div v-if="!myTurn && !gameOver" class="mt-4 p-2 bg-blue-900/30 text-blue-300 rounded animate-pulse">
-                        Attente de {{ opponentUsername }}...
+                    <div v-if="!myTurn && !gameOver" class="mt-4 p-2 bg-blue-900/30 text-blue-300 rounded animate-pulse text-sm">
+                        En attente de {{ opponentUsername }}...
                     </div>
                 </div>
 
-                <div v-if="gameOver" class="mt-6 p-6 bg-yellow-500 text-black rounded-2xl">
-                    <h2 class="text-3xl font-black">FIN !</h2>
-                    <p class="text-xl font-bold">{{ gameResult }}</p>
-                    <button onclick="location.reload()" class="mt-4 bg-black text-white px-6 py-2 rounded-lg font-bold">REJOUER</button>
+                <div v-if="gameOver" class="mt-6 p-6 bg-yellow-500 text-black rounded-2xl shadow-2xl">
+                    <h2 class="text-3xl font-black">FIN DU DUEL !</h2>
+                    <p class="text-xl font-bold mt-2">{{ gameResult }}</p>
+                    <button onclick="location.reload()" class="mt-4 bg-black text-white px-6 py-2 rounded-lg font-bold hover:scale-105 transition">REJOUER</button>
                 </div>
             </div>
 
-            <div class="bg-gray-800 p-5 rounded-xl border-2 transition-all" :class="{'active-player': !myTurn && !gameOver}">
-                <div class="flex items-center justify-between mb-4">
+            <div class="bg-gray-800 p-5 rounded-xl border-2 transition-all" :class="!myTurn && !gameOver ? 'border-red-500 shadow-lg' : 'border-gray-700 opacity-80'">
+                <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-2">
                     <span class="font-bold text-xl">{{ opponentUsername || 'Adversaire' }}</span>
                     <span class="bg-yellow-600 px-3 py-1 rounded text-sm font-black">{{ opponentScore }} PTS</span>
                 </div>
                 <div class="space-y-2">
-                    <div v-for="(val, key) in opponentStatsChosen" :key="key" class="flex justify-between bg-gray-900 p-2 rounded border border-gray-700">
-                        <span class="text-xs text-gray-400 uppercase">{{ statLabels[key] }}</span>
-                        <span class="font-bold text-red-400">{{ val || '--' }}</span>
+                    <div v-for="(label, key) in statLabels" :key="key" class="flex justify-between bg-gray-900 p-2 rounded border border-gray-700">
+                        <span class="text-xs text-gray-400 uppercase font-bold">{{ label }}</span>
+                        <span class="font-bold text-red-400">{{ opponentStatsChosen[key] || '--' }}</span>
                     </div>
                 </div>
             </div>
@@ -101,7 +101,7 @@
     </div>
 
     <script>
-        const { createApp, ref } = Vue;
+        const { createApp, ref, computed } = Vue; // 'computed' ajouté ici !
 
         createApp({
             setup() {
@@ -127,25 +127,28 @@
                 const myScore = ref(0);
                 const opponentScore = ref(0);
 
-                // --- LOGIQUE RESEAU ---
                 const initHost = () => {
+                    status.value = "Initialisation...";
                     peer.value = new Peer();
                     peer.value.on('open', (id) => { 
                         roomCode.value = id; 
-                        status.value = "En attente d'un adversaire...";
+                        status.value = "Salle créée. En attente...";
                     });
                     peer.value.on('connection', (c) => {
                         conn.value = c;
                         setupChat();
                     });
+                    peer.value.on('error', (err) => { status.value = "Erreur: " + err.type; });
                 };
 
                 const initJoin = () => {
+                    status.value = "Connexion...";
                     peer.value = new Peer();
                     peer.value.on('open', () => {
                         conn.value = peer.value.connect(joinId.value);
                         setupChat();
                     });
+                    peer.value.on('error', (err) => { status.value = "Code invalide ou erreur réseau."; });
                 };
 
                 const setupChat = () => {
@@ -156,7 +159,7 @@
                         if(data.type === 'HANDSHAKE') {
                             opponentUsername.value = data.user;
                             gameActive.value = true;
-                            if(roomCode.value) { // Je suis l'hôte
+                            if(roomCode.value) { 
                                 myTurn.value = true;
                                 nextRound();
                             }
@@ -172,7 +175,6 @@
                     });
                 };
 
-                // --- LOGIQUE JEU ---
                 const nextRound = async () => {
                     loading.value = true;
                     const randomId = Math.floor(Math.random() * 800) + 1;
@@ -193,21 +195,19 @@
                     myStatsChosen.value[key] = val;
                     conn.value.send({ type: 'PICK', stat: key, val: val });
                     myTurn.value = false;
+                    checkRoundWinner(key);
                 };
 
                 const checkRoundWinner = (statKey) => {
-                    // On attend que les deux aient choisi la MEME stat
-                    if(myStatsChosen.value[statKey] && opponentStatsChosen.value[statKey]) {
+                    if(myStatsChosen.value[statKey] !== null && opponentStatsChosen.value[statKey] !== null) {
                         if(myStatsChosen.value[statKey] > opponentStatsChosen.value[statKey]) myScore.value++;
                         else if(myStatsChosen.value[statKey] < opponentStatsChosen.value[statKey]) opponentScore.value++;
                         
                         if(turnCount.value < 6) {
                             turnCount.value++;
-                            if(roomCode.value) { // L'hôte gère le tour suivant
+                            if(roomCode.value) { 
                                 myTurn.value = true;
                                 nextRound();
-                            } else {
-                                myTurn.value = false; // Le client attend l'hôte
                             }
                         } else {
                             gameOver.value = true;
@@ -216,9 +216,9 @@
                 };
 
                 const gameResult = computed(() => {
-                    if(myScore.value > opponentScore.value) return "VICTOIRE !";
-                    if(myScore.value < opponentScore.value) return "DÉFAITE...";
-                    return "ÉGALITÉ !";
+                    if(myScore.value > opponentScore.value) return "VOUS AVEZ GAGNÉ !";
+                    if(myScore.value < opponentScore.value) return "ADVERSAIRE GAGNE...";
+                    return "MATCH NUL !";
                 });
 
                 return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myTurn, myScore, opponentScore, turnCount, gameOver, gameResult, initHost, initJoin, pickStat };
