@@ -162,40 +162,48 @@
                 };
 
                 const setupChat = () => {
-                    conn.value.on('open', () => {
-                        conn.value.send({ type: 'HANDSHAKE', user: myUsername.value });
-                    });
-        
-                    // Détection de la déconnexion
-                    conn.value.on('close', () => {
-                        if (!gameOver.value && gameActive.value) {
-                            status.value = "L'adversaire a quitté la partie.";
-                            // On force la victoire par abandon
-                            myConfirmedStats.value.hp = 9999; 
-                            gameOver.value = true;
-                        }
-                    });
-        
-                    conn.value.on('data', (data) => {
-                        if(data.type === 'HANDSHAKE') {
-                            opponentUsername.value = data.user;
-                            gameActive.value = true;
-                            if(roomCode.value) nextRound();
-                        }
-                        if(data.type === 'NEW_POKEMON') {
-                            currentPokemon.value = data.pokemon;
-                            resetTurnState();
-                        }
-                        if(data.type === 'PICK') {
-                            oppCurrentChoice.value = { stat: data.stat, val: data.val };
-                            opponentStatsChosen.value[data.stat] = data.val;
-                            checkTurnEnd();
-                        }
-                        if(data.type === 'RESTART') {
-                            resetStateForNewGame();
-                        }
-                    });
-                };
+            // Quand la connexion s'ouvre
+            conn.value.on('open', () => {
+                conn.value.send({ type: 'HANDSHAKE', user: myUsername.value });
+            });
+
+            // Si l'autre ferme proprement ou perd la connexion
+            conn.value.on('close', () => handleOpponentLeft());
+            conn.value.on('error', () => handleOpponentLeft());
+
+            conn.value.on('data', (data) => {
+                if(data.type === 'HANDSHAKE') {
+                    opponentUsername.value = data.user;
+                    gameActive.value = true;
+                    if(roomCode.value) nextRound();
+                }
+                if(data.type === 'LEAVING') { // Signal manuel de départ
+                    handleOpponentLeft();
+                }
+                if(data.type === 'NEW_POKEMON') {
+                    currentPokemon.value = data.pokemon;
+                    resetTurnState();
+                }
+                if(data.type === 'PICK') {
+                    oppCurrentChoice.value = { stat: data.stat, val: data.val };
+                    opponentStatsChosen.value[data.stat] = data.val;
+                    checkTurnEnd();
+                }
+                if(data.type === 'RESTART') {
+                    resetStateForNewGame();
+                }
+            });
+        };
+
+        // Fonction unique pour gérer l'abandon
+        const handleOpponentLeft = () => {
+            if (!gameOver.value && gameActive.value) {
+                // On donne une victoire par forfait
+                myConfirmedStats.value.hp = 9999; 
+                status.value = "L'adversaire a abandonné.";
+                gameOver.value = true;
+            }
+        };
 
                 const resetTurnState = () => {
                     hasPickedThisTurn.value = false;
@@ -290,6 +298,18 @@
                     if(myTotalStats.value < opponentTotalStats.value) return "bg-red-600";
                     return "bg-yellow-500"; // Égalité
                 });
+
+                        // Prévenir l'autre si on ferme l'onglet
+                window.addEventListener('beforeunload', () => {
+                    if (conn.value) conn.value.send({ type: 'LEAVING' });
+                });
+        
+                // Si le serveur PeerJS nous déconnecte
+                if (peer.value) {
+                    peer.value.on('disconnected', () => {
+                        status.value = "Déconnecté du réseau.";
+                    });
+                }
 
                 return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myTotalStats, opponentTotalStats, turnCount, gameOver, hasPickedThisTurn, roundResolved, gameResult, endGameBgClass, initHost, initJoin, pickStat, isStatVisible, resetForNewGame };
             }
