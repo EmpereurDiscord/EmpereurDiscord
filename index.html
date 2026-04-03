@@ -19,22 +19,22 @@
         <div v-if="!gameActive" class="max-w-md mx-auto bg-gray-800 p-8 rounded-2xl border border-gray-700 shadow-2xl">
             <div class="mb-6">
                 <label class="block text-sm font-bold mb-2">Ton Pseudonyme :</label>
-                <input v-model="myUsername" type="text" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-lg focus:outline-none focus:border-yellow-500">
+                <input v-model="myUsername" type="text" class="w-full bg-gray-900 border border-gray-600 p-3 rounded-lg focus:outline-none focus:border-yellow-500 text-white">
             </div>
 
             <div class="space-y-4">
                 <div class="p-4 bg-gray-700 rounded-xl">
-                    <h3 class="font-bold mb-2">Créer une salle</h3>
-                    <button @click="initHost" :disabled="!myUsername" class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg font-bold transition">Générer un Code de Salle</button>
+                    <h3 class="font-bold mb-2 text-gray-300">Créer une salle</h3>
+                    <button @click="initHost" :disabled="!myUsername" class="w-full bg-green-600 hover:bg-green-700 p-3 rounded-lg font-bold transition uppercase text-white">Générer un Code</button>
                     <div v-if="roomCode" class="mt-3 p-2 bg-black text-center rounded font-mono text-xl text-yellow-400 select-all border border-dashed border-yellow-500">
                         {{ roomCode }}
                     </div>
                 </div>
 
                 <div class="p-4 bg-gray-700 rounded-xl">
-                    <h3 class="font-bold mb-2">Rejoindre une salle</h3>
-                    <input v-model="joinId" type="text" placeholder="Ex: ABCDE" class="w-full bg-gray-900 border border-gray-600 p-2 rounded mb-2 text-center font-mono uppercase">
-                    <button @click="initJoin" :disabled="!myUsername || !joinId" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-lg font-bold transition">Rejoindre le Duel</button>
+                    <h3 class="font-bold mb-2 text-gray-300">Rejoindre une salle</h3>
+                    <input v-model="joinId" type="text" placeholder="Ex: ABCDE" class="w-full bg-gray-900 border border-gray-600 p-2 rounded mb-2 text-center font-mono uppercase text-white">
+                    <button @click="initJoin" :disabled="!myUsername || !joinId" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-lg font-bold transition uppercase text-white text-sm">Rejoindre</button>
                 </div>
             </div>
             <p class="text-xs text-gray-500 mt-4 text-center">Statut : {{ status }}</p>
@@ -45,7 +45,7 @@
             <div class="bg-gray-800 p-5 rounded-xl border-2 border-gray-700">
                 <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-2">
                     <span class="font-bold text-xl text-blue-400">{{ myUsername }}</span>
-                    <span class="bg-blue-900 px-3 py-1 rounded text-sm font-black">TOTAL : {{ myTotalStats }}</span>
+                    <span class="bg-blue-900 px-3 py-1 rounded text-sm font-black text-white">TOTAL : {{ myTotalStats }}</span>
                 </div>
                 <div class="space-y-2">
                     <div v-for="(label, key) in statLabels" :key="key" class="flex justify-between bg-gray-900 p-2 rounded border border-gray-700">
@@ -66,7 +66,7 @@
                         <button v-for="(label, key) in statLabels" :key="key" 
                             @click="pickStat(key)" 
                             :disabled="hasPickedThisTurn || myStatsChosen[key] !== null"
-                            class="stat-btn bg-gray-700 hover:bg-yellow-600 p-3 rounded text-xs font-black uppercase transition-all text-white"
+                            class="stat-btn bg-gray-700 hover:bg-yellow-600 p-3 rounded text-xs font-black uppercase transition-all text-white border-b-4 border-gray-900 active:border-0"
                         >
                             {{ label }}
                         </button>
@@ -75,22 +75,22 @@
                     <div v-if="hasPickedThisTurn && !roundResolved" class="mt-4 p-2 bg-blue-900/30 text-blue-300 rounded animate-pulse text-sm">
                         En attente de {{ opponentUsername }}...
                     </div>
-                    <div v-if="roundResolved" class="mt-4 p-2 bg-green-900/30 text-green-300 rounded text-sm font-bold">
+                    <div v-if="roundResolved" class="mt-4 p-2 bg-green-900/30 text-green-300 rounded text-sm font-bold animate-pulse">
                         Révélation des stats...
                     </div>
                 </div>
 
-                <div v-if="gameOver" class="mt-6 p-6 bg-yellow-500 text-black rounded-2xl shadow-2xl">
-                    <h2 class="text-3xl font-black text-center uppercase">FIN DU DUEL !</h2>
-                    <p class="text-xl font-bold mt-2 uppercase text-center">{{ gameResult }}</p>
-                    <button @click="resetForNewGame" class="mt-4 bg-black text-white px-6 py-2 rounded-lg font-bold w-full uppercase">Relancer une partie</button>
+                <div v-if="gameOver" class="mt-6 p-8 rounded-3xl shadow-2xl transition-all duration-500" :class="endGameBgClass">
+                    <h2 class="text-4xl font-black text-center uppercase italic text-black">FIN DU DUEL !</h2>
+                    <p class="text-2xl font-bold mt-2 uppercase text-center text-black">{{ gameResult }}</p>
+                    <button @click="resetForNewGame" class="mt-6 bg-black text-white px-8 py-3 rounded-lg font-bold w-full uppercase hover:bg-gray-800 transition shadow-lg">Relancer une partie</button>
                 </div>
             </div>
 
             <div class="bg-gray-800 p-5 rounded-xl border-2 border-gray-700">
                 <div class="flex items-center justify-between mb-4 border-b border-gray-700 pb-2">
                     <span class="font-bold text-xl text-red-400">{{ opponentUsername }}</span>
-                    <span class="bg-red-900 px-3 py-1 rounded text-sm font-black">TOTAL : {{ opponentTotalStats }}</span>
+                    <span class="bg-red-900 px-3 py-1 rounded text-sm font-black text-white">TOTAL : {{ opponentTotalStats }}</span>
                 </div>
                 <div class="space-y-2">
                     <div v-for="(label, key) in statLabels" :key="key" class="flex justify-between bg-gray-900 p-2 rounded border border-gray-700">
@@ -107,173 +107,180 @@
     <script>
         const { createApp, ref, computed } = Vue;
 
-createApp({
-    setup() {
-        const myUsername = ref("");
-        const opponentUsername = ref("");
-        const roomCode = ref("");
-        const joinId = ref("");
-        const gameActive = ref(false);
-        const status = ref("Prêt");
-        const loading = ref(false);
-        const peer = ref(null);
-        const conn = ref(null);
-        
-        const currentPokemon = ref(null);
-        const turnCount = ref(1);
-        const gameOver = ref(false);
-        const hasPickedThisTurn = ref(false);
-        const roundResolved = ref(false);
-
-        const myCurrentChoice = ref(null);
-        const oppCurrentChoice = ref(null);
-
-        const statLabels = { hp:'PV', attack:'ATK', defense:'DEF', 'special-attack':'ATK SP', 'special-defense':'DEF SP', speed:'VIT' };
-        
-        // Stockage des stats confirmées (historique des tours passés)
-        const myConfirmedStats = ref({ hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 });
-        const oppConfirmedStats = ref({ hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 });
-
-        // Affichage en temps réel dans les colonnes latérales
-        const myStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
-        const opponentStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
-
-        const generateShortId = () => {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            let result = '';
-            for (let i = 0; i < 5; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-            return result;
-        };
-
-        const initHost = () => {
-            const shortId = generateShortId();
-            peer.value = new Peer(shortId);
-            peer.value.on('open', (id) => { roomCode.value = id; status.value = "Salle ouverte"; });
-            peer.value.on('connection', (c) => { conn.value = c; setupChat(); });
-            peer.value.on('error', (err) => { if(err.type === 'unavailable-id') initHost(); });
-        };
-
-        const initJoin = () => {
-            peer.value = new Peer();
-            peer.value.on('open', () => { 
-                conn.value = peer.value.connect(joinId.value.toUpperCase()); 
-                setupChat(); 
-            });
-        };
-
-        const setupChat = () => {
-            conn.value.on('open', () => conn.value.send({ type: 'HANDSHAKE', user: myUsername.value }));
-            conn.value.on('data', (data) => {
-                if(data.type === 'HANDSHAKE') {
-                    opponentUsername.value = data.user;
-                    gameActive.value = true;
-                    if(roomCode.value) nextRound();
-                }
-                if(data.type === 'NEW_POKEMON') {
-                    currentPokemon.value = data.pokemon;
-                    resetTurnState();
-                }
-                if(data.type === 'PICK') {
-                    oppCurrentChoice.value = { stat: data.stat, val: data.val };
-                    opponentStatsChosen.value[data.stat] = data.val;
-                    checkTurnEnd();
-                }
-                if(data.type === 'RESTART') {
-                    resetStateForNewGame();
-                }
-            });
-        };
-
-        const resetTurnState = () => {
-            hasPickedThisTurn.value = false;
-            roundResolved.value = false;
-            loading.value = false;
-            myCurrentChoice.value = null;
-            oppCurrentChoice.value = null;
-        };
-
-        const nextRound = async () => {
-            loading.value = true;
-            const randomId = Math.floor(Math.random() * 800) + 1;
-            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
-            const d = await res.json();
-            const poke = {
-                name: d.name,
-                sprite: d.sprites.other['official-artwork'].front_default || d.sprites.front_default,
-                stats: { hp:d.stats[0].base_stat, attack:d.stats[1].base_stat, defense:d.stats[2].base_stat, 'special-attack':d.stats[3].base_stat, 'special-defense':d.stats[4].base_stat, speed:d.stats[5].base_stat }
-            };
-            currentPokemon.value = poke;
-            conn.value.send({ type: 'NEW_POKEMON', pokemon: poke });
-            resetTurnState();
-        };
-
-        const pickStat = (key) => {
-            if (hasPickedThisTurn.value) return;
-            const val = currentPokemon.value.stats[key];
-            myCurrentChoice.value = { stat: key, val: val };
-            myStatsChosen.value[key] = val;
-            hasPickedThisTurn.value = true;
-            conn.value.send({ type: 'PICK', stat: key, val: val });
-            checkTurnEnd();
-        };
-
-        const checkTurnEnd = () => {
-            if(myCurrentChoice.value && oppCurrentChoice.value) {
-                roundResolved.value = true;
+        createApp({
+            setup() {
+                const myUsername = ref("");
+                const opponentUsername = ref("");
+                const roomCode = ref("");
+                const joinId = ref("");
+                const gameActive = ref(false);
+                const status = ref("Prêt");
+                const loading = ref(false);
+                const peer = ref(null);
+                const conn = ref(null);
                 
-                // On n'ajoute aux stats "confirmées" qu'au moment de la résolution
-                myConfirmedStats.value[myCurrentChoice.value.stat] = myCurrentChoice.value.val;
-                oppConfirmedStats.value[oppCurrentChoice.value.stat] = oppCurrentChoice.value.val;
+                const currentPokemon = ref(null);
+                const turnCount = ref(1);
+                const gameOver = ref(false);
+                const hasPickedThisTurn = ref(false);
+                const roundResolved = ref(false);
 
-                setTimeout(() => {
-                    if(turnCount.value < 6) {
-                        turnCount.value++;
-                        if(roomCode.value) nextRound();
-                    } else {
-                        gameOver.value = true;
+                const myCurrentChoice = ref(null);
+                const oppCurrentChoice = ref(null);
+
+                const statLabels = { hp:'PV', attack:'ATK', defense:'DEF', 'special-attack':'ATK SP', 'special-defense':'DEF SP', speed:'VIT' };
+                
+                // Stockage des stats confirmées (historique)
+                const myConfirmedStats = ref({ hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 });
+                const oppConfirmedStats = ref({ hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 });
+
+                // Affichage immédiat dans les colonnes
+                const myStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
+                const opponentStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
+
+                const generateShortId = () => {
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    let result = '';
+                    for (let i = 0; i < 5; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+                    return result;
+                };
+
+                const initHost = () => {
+                    const shortId = generateShortId();
+                    peer.value = new Peer(shortId);
+                    peer.value.on('open', (id) => { roomCode.value = id; status.value = "Salle ouverte"; });
+                    peer.value.on('connection', (c) => { conn.value = c; setupChat(); });
+                    peer.value.on('error', (err) => { if(err.type === 'unavailable-id') initHost(); });
+                };
+
+                const initJoin = () => {
+                    peer.value = new Peer();
+                    peer.value.on('open', () => { 
+                        conn.value = peer.value.connect(joinId.value.toUpperCase()); 
+                        setupChat(); 
+                    });
+                };
+
+                const setupChat = () => {
+                    conn.value.on('open', () => conn.value.send({ type: 'HANDSHAKE', user: myUsername.value }));
+                    conn.value.on('data', (data) => {
+                        if(data.type === 'HANDSHAKE') {
+                            opponentUsername.value = data.user;
+                            gameActive.value = true;
+                            if(roomCode.value) nextRound();
+                        }
+                        if(data.type === 'NEW_POKEMON') {
+                            currentPokemon.value = data.pokemon;
+                            resetTurnState();
+                        }
+                        if(data.type === 'PICK') {
+                            oppCurrentChoice.value = { stat: data.stat, val: data.val };
+                            opponentStatsChosen.value[data.stat] = data.val;
+                            checkTurnEnd();
+                        }
+                        if(data.type === 'RESTART') {
+                            resetStateForNewGame();
+                        }
+                    });
+                };
+
+                const resetTurnState = () => {
+                    hasPickedThisTurn.value = false;
+                    roundResolved.value = false;
+                    loading.value = false;
+                    myCurrentChoice.value = null;
+                    oppCurrentChoice.value = null;
+                };
+
+                const nextRound = async () => {
+                    loading.value = true;
+                    const randomId = Math.floor(Math.random() * 800) + 1;
+                    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
+                    const d = await res.json();
+                    const poke = {
+                        name: d.name,
+                        sprite: d.sprites.other['official-artwork'].front_default || d.sprites.front_default,
+                        stats: { hp:d.stats[0].base_stat, attack:d.stats[1].base_stat, defense:d.stats[2].base_stat, 'special-attack':d.stats[3].base_stat, 'special-defense':d.stats[4].base_stat, speed:d.stats[5].base_stat }
+                    };
+                    currentPokemon.value = poke;
+                    conn.value.send({ type: 'NEW_POKEMON', pokemon: poke });
+                    resetTurnState();
+                };
+
+                const pickStat = (key) => {
+                    if (hasPickedThisTurn.value) return;
+                    const val = currentPokemon.value.stats[key];
+                    myCurrentChoice.value = { stat: key, val: val };
+                    myStatsChosen.value[key] = val;
+                    hasPickedThisTurn.value = true;
+                    conn.value.send({ type: 'PICK', stat: key, val: val });
+                    checkTurnEnd();
+                };
+
+                const checkTurnEnd = () => {
+                    if(myCurrentChoice.value && oppCurrentChoice.value) {
+                        roundResolved.value = true;
+                        
+                        // On confirme les stats au moment de la résolution
+                        myConfirmedStats.value[myCurrentChoice.value.stat] = myCurrentChoice.value.val;
+                        oppConfirmedStats.value[oppCurrentChoice.value.stat] = oppCurrentChoice.value.val;
+
+                        setTimeout(() => {
+                            if(turnCount.value < 6) {
+                                turnCount.value++;
+                                if(roomCode.value) nextRound();
+                            } else {
+                                gameOver.value = true;
+                            }
+                        }, 3000);
                     }
-                }, 3000);
+                };
+
+                const isStatVisible = (key) => {
+                    if (opponentStatsChosen.value[key] !== null) {
+                        if (oppCurrentChoice.value && oppCurrentChoice.value.stat === key) {
+                            return roundResolved.value;
+                        }
+                        return true;
+                    }
+                    return false;
+                };
+
+                const resetStateForNewGame = () => {
+                    turnCount.value = 1;
+                    gameOver.value = false;
+                    myConfirmedStats.value = { hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 };
+                    oppConfirmedStats.value = { hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 };
+                    myStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
+                    opponentStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
+                    if(roomCode.value) nextRound();
+                };
+
+                const resetForNewGame = () => {
+                    conn.value.send({ type: 'RESTART' });
+                    resetStateForNewGame();
+                };
+
+                // Calcul du total basé sur les confirmedStats
+                const myTotalStats = computed(() => Object.values(myConfirmedStats.value).reduce((a, b) => a + b, 0));
+                const opponentTotalStats = computed(() => Object.values(oppConfirmedStats.value).reduce((a, b) => a + b, 0));
+
+                const gameResult = computed(() => {
+                    if(myTotalStats.value > opponentTotalStats.value) return "Victoire Royale !";
+                    if(myTotalStats.value < opponentTotalStats.value) return "Défaite...";
+                    return "Égalité parfaite !";
+                });
+
+                // Définition de la classe CSS du fond selon le résultat
+                const endGameBgClass = computed(() => {
+                    if(myTotalStats.value > opponentTotalStats.value) return "bg-green-500";
+                    if(myTotalStats.value < opponentTotalStats.value) return "bg-red-600";
+                    return "bg-yellow-500"; // Égalité
+                });
+
+                return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myTotalStats, opponentTotalStats, turnCount, gameOver, hasPickedThisTurn, roundResolved, gameResult, endGameBgClass, initHost, initJoin, pickStat, isStatVisible, resetForNewGame };
             }
-        };
-
-        const isStatVisible = (key) => {
-            if (opponentStatsChosen.value[key] !== null) {
-                if (oppCurrentChoice.value && oppCurrentChoice.value.stat === key) {
-                    return roundResolved.value;
-                }
-                return true;
-            }
-            return false;
-        };
-
-        const resetStateForNewGame = () => {
-            turnCount.value = 1;
-            gameOver.value = false;
-            myConfirmedStats.value = { hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 };
-            oppConfirmedStats.value = { hp:0, attack:0, defense:0, 'special-attack':0, 'special-defense':0, speed:0 };
-            myStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
-            opponentStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
-            if(roomCode.value) nextRound();
-        };
-
-        const resetForNewGame = () => {
-            conn.value.send({ type: 'RESTART' });
-            resetStateForNewGame();
-        };
-
-        // Calcul du total basé uniquement sur les rounds terminés/confirmés
-        const myTotalStats = computed(() => Object.values(myConfirmedStats.value).reduce((a, b) => a + b, 0));
-        const opponentTotalStats = computed(() => Object.values(oppConfirmedStats.value).reduce((a, b) => a + b, 0));
-
-        const gameResult = computed(() => {
-            if(myTotalStats.value > opponentTotalStats.value) return "Victoire !";
-            if(myTotalStats.value < opponentTotalStats.value) return "Défaite...";
-            return "Égalité !";
-        });
-
-        return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myTotalStats, opponentTotalStats, turnCount, gameOver, hasPickedThisTurn, roundResolved, gameResult, initHost, initJoin, pickStat, isStatVisible, resetForNewGame };
-    }
-}).mount('#app');
+        }).mount('#app');
     </script>
 </body>
 </html>
