@@ -33,7 +33,7 @@
 
                 <div class="p-4 bg-gray-700 rounded-xl">
                     <h3 class="font-bold mb-2">Rejoindre une salle</h3>
-                    <input v-model="joinId" type="text" placeholder="Coller le code ici..." class="w-full bg-gray-900 border border-gray-600 p-2 rounded mb-2 text-center font-mono">
+                    <input v-model="joinId" type="text" placeholder="Ex: ABCDE" class="w-full bg-gray-900 border border-gray-600 p-2 rounded mb-2 text-center font-mono uppercase">
                     <button @click="initJoin" :disabled="!myUsername || !joinId" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-lg font-bold transition">Rejoindre le Duel</button>
                 </div>
             </div>
@@ -76,14 +76,14 @@
                         En attente de {{ opponentUsername }}...
                     </div>
                     <div v-if="roundResolved" class="mt-4 p-2 bg-green-900/30 text-green-300 rounded text-sm font-bold">
-                        Comparaison des stats...
+                        Révélation des stats...
                     </div>
                 </div>
 
                 <div v-if="gameOver" class="mt-6 p-6 bg-yellow-500 text-black rounded-2xl shadow-2xl">
-                    <h2 class="text-3xl font-black">FIN DU DUEL !</h2>
-                    <p class="text-xl font-bold mt-2 uppercase">{{ gameResult }}</p>
-                    <button onclick="location.reload()" class="mt-4 bg-black text-white px-6 py-2 rounded-lg font-bold">REJOUER</button>
+                    <h2 class="text-3xl font-black text-center uppercase">FIN DU DUEL !</h2>
+                    <p class="text-xl font-bold mt-2 uppercase text-center">{{ gameResult }}</p>
+                    <button @click="resetForNewGame" class="mt-4 bg-black text-white px-6 py-2 rounded-lg font-bold w-full uppercase">Relancer une partie</button>
                 </div>
             </div>
 
@@ -96,7 +96,7 @@
                     <div v-for="(label, key) in statLabels" :key="key" class="flex justify-between bg-gray-900 p-2 rounded border border-gray-700">
                         <span class="text-xs text-gray-400 uppercase font-bold">{{ label }}</span>
                         <span class="font-bold text-white">
-                            {{ roundResolved ? (opponentStatsChosen[key] || '--') : '--' }}
+                            {{ isStatVisible(key) ? (opponentStatsChosen[key] || '--') : '--' }}
                         </span>
                     </div>
                 </div>
@@ -132,15 +132,34 @@
                 const myStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
                 const opponentStatsChosen = ref({ hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null });
 
+                // Pour cacher la stat de l'adversaire seulement pendant les 3 secondes de résolution
+                const hiddenOpponentStatKey = ref(null);
+
+                const generateShortId = () => {
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    let result = '';
+                    for (let i = 0; i < 5; i++) {
+                        result += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+                    return result;
+                };
+
                 const initHost = () => {
-                    peer.value = new Peer();
+                    const shortId = generateShortId();
+                    peer.value = new Peer(shortId);
                     peer.value.on('open', (id) => { roomCode.value = id; status.value = "Salle ouverte"; });
                     peer.value.on('connection', (c) => { conn.value = c; setupChat(); });
+                    peer.value.on('error', (err) => { 
+                        if(err.type === 'unavailable-id') initHost(); // Recréer si ID pris
+                    });
                 };
 
                 const initJoin = () => {
                     peer.value = new Peer();
-                    peer.value.on('open', () => { conn.value = peer.value.connect(joinId.value); setupChat(); });
+                    peer.value.on('open', () => { 
+                        conn.value = peer.value.connect(joinId.value.toUpperCase()); 
+                        setupChat(); 
+                    });
                 };
 
                 const setupChat = () => {
@@ -159,6 +178,9 @@
                             oppCurrentChoice.value = data;
                             checkTurnEnd();
                         }
+                        if(data.type === 'RESTART') {
+                            resetStateForNewGame();
+                        }
                     });
                 };
 
@@ -168,6 +190,7 @@
                     loading.value = false;
                     myCurrentChoice.value = null;
                     oppCurrentChoice.value = null;
+                    hiddenOpponentStatKey.value = null;
                 };
 
                 const nextRound = async () => {
@@ -196,32 +219,57 @@
                 const checkTurnEnd = () => {
                     if(myCurrentChoice.value && oppCurrentChoice.value) {
                         roundResolved.value = true;
-                        // On enregistre les choix pour les afficher dans les listes latérales
+                        hiddenOpponentStatKey.value = oppCurrentChoice.value.stat;
+                        
                         myStatsChosen.value[myCurrentChoice.value.stat] = myCurrentChoice.value.val;
                         opponentStatsChosen.value[oppCurrentChoice.value.stat] = oppCurrentChoice.value.val;
 
                         setTimeout(() => {
+                            // On "cache" la stat du tour mais elle reste dans l'historique opponentStatsChosen
+                            // Le point suivant est que le tour passe :
                             if(turnCount.value < 6) {
                                 turnCount.value++;
                                 if(roomCode.value) nextRound();
                             } else {
                                 gameOver.value = true;
                             }
-                        }, 3000); // 3 secondes d'affichage du choix adverse
+                        }, 3000);
                     }
                 };
 
-                // Calcul du cumul total des stats choisies
+                const isStatVisible = (key) => {
+                    // Si le round n'est pas fini, on ne voit rien
+                    if(!roundResolved.value) return false;
+                    // Si c'est une stat d'un tour précédent, elle est visible
+                    if(opponentStatsChosen.value[key] !== null && key !== hiddenOpponentStatKey.value) return true;
+                    // Si c'est la stat du tour en cours et que le round est résolu, elle est visible
+                    if(key === hiddenOpponentStatKey.value && roundResolved.value) return true;
+                    return false;
+                };
+
+                const resetStateForNewGame = () => {
+                    turnCount.value = 1;
+                    gameOver.value = false;
+                    myStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
+                    opponentStatsChosen.value = { hp:null, attack:null, defense:null, 'special-attack':null, 'special-defense':null, speed:null };
+                    if(roomCode.value) nextRound();
+                };
+
+                const resetForNewGame = () => {
+                    conn.value.send({ type: 'RESTART' });
+                    resetStateForNewGame();
+                };
+
                 const myTotalStats = computed(() => Object.values(myStatsChosen.value).reduce((a, b) => a + (b || 0), 0));
                 const opponentTotalStats = computed(() => Object.values(opponentStatsChosen.value).reduce((a, b) => a + (b || 0), 0));
 
                 const gameResult = computed(() => {
-                    if(myTotalStats.value > opponentTotalStats.value) return "Victoire (Total plus haut) !";
+                    if(myTotalStats.value > opponentTotalStats.value) return "Victoire !";
                     if(myTotalStats.value < opponentTotalStats.value) return "Défaite...";
                     return "Égalité !";
                 });
 
-                return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myTotalStats, opponentTotalStats, turnCount, gameOver, hasPickedThisTurn, roundResolved, gameResult, initHost, initJoin, pickStat };
+                return { myUsername, opponentUsername, roomCode, joinId, gameActive, status, currentPokemon, loading, statLabels, myStatsChosen, opponentStatsChosen, myTotalStats, opponentTotalStats, turnCount, gameOver, hasPickedThisTurn, roundResolved, gameResult, initHost, initJoin, pickStat, isStatVisible, resetForNewGame };
             }
         }).mount('#app');
     </script>
